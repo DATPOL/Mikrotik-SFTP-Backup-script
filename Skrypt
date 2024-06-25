@@ -1,0 +1,5 @@
+:global datetime [/system/clock/get date]
+/export show-sensitive file="export_$datetime.rsc"
+/system/backup/save encryption=aes-sha256 name="backup_$datetime.backup" password="HASLO_SZYFRUJACE_BACKUP"
+/tool/fetch dst-path="/home/wm_test/backup_$datetime.backup" src-path="backup_$datetime.backup" upload=yes mode=sftp address=IP_SERWERA port=PORT_SERWERA user=USER_SERWERA password="HASLO_SERWERA"
+/tool/fetch dst-path="/home/wm_test/export_$datetime.rsc" src-path="export_$datetime.rsc" upload=yes mode=sftp address=IP_SERWERA port=PORT_SERWERA user=USER_SERWERA password="HASLO_SERWERA"
