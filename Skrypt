@@ -1,5 +1,44 @@
-:global datetime [/system/clock/get date]
-/export show-sensitive file="export_$datetime.rsc"
-/system/backup/save encryption=aes-sha256 name="backup_$datetime.backup" password="HASLO_SZYFRUJACE_BACKUP"
-/tool/fetch dst-path="/home/wm_test/backup_$datetime.backup" src-path="backup_$datetime.backup" upload=yes mode=sftp address=IP_SERWERA port=PORT_SERWERA user=USER_SERWERA password="HASLO_SERWERA"
-/tool/fetch dst-path="/home/wm_test/export_$datetime.rsc" src-path="export_$datetime.rsc" upload=yes mode=sftp address=IP_SERWERA port=PORT_SERWERA user=USER_SERWERA password="HASLO_SERWERA"
+# Ustawienia
+:local backupName ("mikrotik-backup-" . [:pick [/system clock get date] 0 11] . "-" . [:pick [/system clock get time] 0 8])
+:local backupFileName ($backupName . ".backup")
+:local sftpServer "auth.datpol.net"a
+:local sftpPort 2022
+:local sftpUser "testmikrotik"
+:local sftpPassword "testmikrotik"
+:local sftpPath "/"  
+
+
+# Tworzenie kopii zapasowej
+/system backup save name=$backupName
+:log info ("Tworzenie kopii zapasowej zakończone: " . $backupName)
+
+# Czekaj aż plik zostanie utworzony
+:delay 3s
+
+# Sprawdź, czy plik kopii zapasowej został utworzony
+:local backupFileId [/file find name=$backupFileName]
+:if ([:len $backupFileId] > 0) do={
+    :log info ("Plik kopii zapasowej został utworzony: " . $backupFileName)
+} else={
+    :log error ("Nie udało się utworzyć pliku kopii zapasowej: " . $backupFileName)
+    :return
+}
+
+# Wysyłanie pliku do serwera SFTP
+:log info ("Rozpoczynamy przesyłanie pliku na serwer SFTP: " . $backupFileName)
+:local fetchResult [/tool fetch url=("sftp://" . $sftpServer . ":" . $sftpPort . $sftpPath . $backupFileName) \
+    user=$sftpUser \
+    password=$sftpPassword \
+    src-path=$backupFileName \
+    upload=yes \
+    mode=sftp]
+
+:log info ("Wynik przesyłania: " . $fetchResult)
+
+# Sprawdź wynik operacji
+:if ($fetchResult = "done") do={
+    :log info ("Kopia zapasowa " . $backupFileName . " została wysłana do SFTP")
+    # Usuwanie lokalnej kopii zapasowej po udanym przesłaniu
+    /file remove $backupFileName
+    :log info ("Lokalna kopia zapasowa " . $backupFileName . " została usunięta")
+} 
